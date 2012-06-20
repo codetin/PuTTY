@@ -4906,13 +4906,15 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
      * Added: 9/30/09 - B. Nef
      * from: http://scnr.net/blog/index.php/archives/61
      */
-	if (wParam == VK_TAB && shift_state == 2) {	/* Ctrl-tab */
-	    p += sprintf((char *) p, "\x1B[27;5;9~");
-	    return p - output;
-	}
-	if (wParam == VK_TAB && shift_state == 3) {	/* Ctrl-Shift-tab */
-	    p += sprintf((char *) p, "\x1B[27;6;9~");
-	    return p - output;
+    if (0 == conf_get_int(conf, CONF_ctrl_tab_switch)) {
+		if (wParam == VK_TAB && shift_state == 2) {	/* Ctrl-tab */
+		    p += sprintf((char *) p, "\x1B[27;5;9~");
+		    return p - output;
+		}
+		if (wParam == VK_TAB && shift_state == 3) {	/* Ctrl-Shift-tab */
+		    p += sprintf((char *) p, "\x1B[27;6;9~");
+		    return p - output;
+		}
 	}
 	if (wParam == VK_SPACE && shift_state == 2) {	/* Ctrl-Space */
 	    *p++ = 0;
