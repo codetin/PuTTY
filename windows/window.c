@@ -61,6 +61,7 @@
  * Trayicon Menu addons
  */
 #define IDM_VISIBLE 0x0240
+#define IDM_NEXTWINDOW 0x0250
 
 #define IDM_TRAYSEP 0x0210
 #define IDM_TRAYCLOSE 0x0220
@@ -959,6 +960,9 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
 			AppendMenu(m, MF_ENABLED | MF_CHECKED, IDM_VISIBLE, "Alwa&ys on top");
 		} else {
 			AppendMenu(m, MF_ENABLED | MF_UNCHECKED, IDM_VISIBLE, "Alwa&ys on top");
+		}
+		if (conf_get_int(conf, CONF_ctrl_tab_switch)) {
+		    AppendMenu(m, MF_ENABLED, IDM_NEXTWINDOW, "Next &Window\tCtrl+Tab");
 		}
 
 	    AppendMenu(m, MF_SEPARATOR, 0, 0);
@@ -2237,10 +2241,9 @@ struct ctrl_tab_info {
 
 static BOOL CALLBACK CtrlTabWindowProc(HWND hwnd, LPARAM lParam) {
     struct ctrl_tab_info* info = (struct ctrl_tab_info*) lParam;
-    char class_name[16];
     int wndExtra;
-    // Note: "FuTTY" is hardcoded into the next line, change it to PuTTY if you re-use this code..
-    if (info->self != hwnd && (wndExtra = GetClassLong(hwnd, GCL_CBWNDEXTRA)) >= 8 && GetClassName(hwnd, class_name, sizeof class_name) >= 5 && memcmp(class_name, "FuTTY", 5) == 0) {
+    char class_name[16];
+    if (info->self != hwnd && (wndExtra = GetClassLong(hwnd, GCL_CBWNDEXTRA)) >= 8 && GetClassName(hwnd, class_name, sizeof class_name) >= 5 && strcmp(class_name, appname) == 0 && IsWindowVisible(hwnd) && !IsIconic(hwnd) && IsWindowEnabled(hwnd)) {
         DWORD hwnd_hi_date_time = GetWindowLong(hwnd, wndExtra - 8);
         DWORD hwnd_lo_date_time = GetWindowLong(hwnd, wndExtra - 4);
         int hwnd_self, hwnd_next;
@@ -2735,6 +2738,23 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 	  case IDM_ABOUT:
 	    showabout(hwnd);
 	    break;
+	  case IDM_NEXTWINDOW:
+		if (conf_get_int(conf, CONF_ctrl_tab_switch)) {
+		    struct ctrl_tab_info info = {
+		         -1,
+		         hwnd,
+		    };
+		    info.next_hi_date_time = info.self_hi_date_time = GetWindowLong(hwnd, 0);
+		    info.next_lo_date_time = info.self_lo_date_time = GetWindowLong(hwnd, 4);
+		    EnumWindows(CtrlTabWindowProc, (LPARAM) &info);
+		    if (info.next != NULL) {
+			    //ShowWindow(info.next, SW_RESTORE);
+			    SetForegroundWindow(info.next);
+			    //UpdateWindow(info.next);
+			    return 0;
+		    }
+		}
+		break;
 	  case IDM_HELP:
 	    launch_help(hwnd, NULL);
 	    break;
@@ -3477,9 +3497,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 		    info.next_hi_date_time = info.self_hi_date_time = GetWindowLong(hwnd, 0);
 		    info.next_lo_date_time = info.self_lo_date_time = GetWindowLong(hwnd, 4);
 		    EnumWindows(CtrlTabWindowProc, (LPARAM) &info);
-		    if (info.next != NULL)
-		        SetForegroundWindow(info.next);
-		    return 0;
+		    if (info.next != NULL) {
+			    //ShowWindow(info.next, SW_RESTORE);
+			    SetForegroundWindow(info.next);
+			    //UpdateWindow(info.next);
+			    return 0;
+			}
 		}
 #ifndef NO_URLHACK
 		if (wParam == VK_CONTROL && conf_get_int(term->conf, CONF_url_ctrl_click)) {
