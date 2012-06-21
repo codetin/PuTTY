@@ -4493,6 +4493,7 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
     int no_applic_k = conf_get_int(conf, CONF_no_applic_k);
     int ctrlaltkeys = conf_get_int(conf, CONF_ctrlaltkeys);
     int nethack_keypad = conf_get_int(conf, CONF_nethack_keypad);
+    int ctrl_code = 0;
 
     HKL kbd_layout = GetKeyboardLayout(0);
 
@@ -5039,7 +5040,9 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
 	    code = 34;
 	    break;
 	}
-	if ((shift_state&2) == 0) switch (wParam) {
+
+	if ((shift_state&2) == 0) {
+	 switch (wParam) {
 	  case VK_HOME:
 	    code = 1;
 	    break;
@@ -5058,7 +5061,18 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
 	  case VK_NEXT:
 	    code = 6;
 	    break;
+	 }
+	} else {
+	 switch (wParam) {
+	  case VK_HOME:
+	    code = 1;
+	    break;
+	  case VK_END:
+	    code = 4;
+	    break;
+	 }
 	}
+
 	/* Reorder edit keys to physical order */
 	if (funky_type == FUNKY_VT400 && code <= 6)
 	    code = "\0\2\1\4\5\3\6"[code];
@@ -5165,12 +5179,41 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
 		p += sprintf((char *) p, "\x1BO%c", code + 'P' - 11);
 	    return p - output;
 	}
-	if ((code == 1 || code == 4) &&
-	    conf_get_int(conf, CONF_rxvt_homeend)) {
-	    p += sprintf((char *) p, code == 1 ? "\x1B[H" : "\x1BOw");
-	    return p - output;
+
+	/* Make ctrl_code contain the actual control code to send,
+	   based on shift_state and left_alt status  -FireEgl / FuTTY  */
+	if (shift_state == 2 && left_alt == 0) { /* Ctrl -- Compatibility Warning: This changes PuTTYs (bad) behaviour! */
+		ctrl_code = 5;
+	} else if (shift_state == 1 && left_alt == 0) { /* Shift */
+		ctrl_code = 2;
+	} else if (shift_state == 3 && left_alt == 0) { /* Ctrl + Shift */
+		ctrl_code = 6;
+	} else if (shift_state == 0 && left_alt == 1) { /* Left Alt */
+		ctrl_code = 3;
+		p = output; /* don't also pass escape */
+	} else if (shift_state == 1 && left_alt == 1) { /* Shift + Left Alt */
+		ctrl_code = 4;
+		p = output; /* don't also pass escape */
+	} else if (shift_state == 2 && left_alt == 1) { /* Ctrl + Left Alt */
+		ctrl_code = 7;
+		p = output; /* don't also pass escape */
+	} else if (shift_state == 3 && left_alt == 1) { /* Ctrl + Shift + Left Alt */
+		ctrl_code = 8;
+		p = output; /* don't also pass escape */
 	}
-	if (code) {
+
+	if (code == 1 || code == 4) {
+	    if (conf_get_int(conf, CONF_rxvt_homeend)) {
+		    p += sprintf((char *) p, code == 1 ? "\x1B[H" : "\x1BOw");
+		    return p - output;
+	    } else if (ctrl_code > 1) {
+		    p += sprintf((char *) p, code == 1 ? "\x1B[1;%dH" : "\x1B[1;%dF", ctrl_code);
+		    return p - output;
+	    } else {
+		    p += sprintf((char *) p, code == 1 ? "\x1B[H" : "\x1B[F"); /* Home/End -- Compatibility Warning: This changes PuTTYs (bad?) behaviour! */
+		    return p - output;
+	    }
+	} else if (code) {
 	    p += sprintf((char *) p, "\x1B[%d~", code);
 	    return p - output;
 	}
@@ -5199,7 +5242,19 @@ static int TranslateKey(UINT message, WPARAM wParam, LPARAM lParam,
 		break;
 	    }
 	    if (xkey) {
-		p += format_arrow_key(p, term, xkey, shift_state);
+		/* shift_state doesn't hold anything about the Alt key,
+		   and rather than adding more numbers to shift_state
+		   for all the combinations of Shift/Ctrl/Alt, I made
+		   ctrl_code which just contains the number part
+		   of the escape code. The +10 makes it so it knows
+		   the difference between the old shift_state and the
+		   new ctrl_code.  (it will do -10 before using it) 
+		   This is so I don't have to rewrite a ton of code
+		   which uses shift_state.  -FireEgl / FuTTY  */
+		if (ctrl_code > 0)
+			p += format_arrow_key(p, term, xkey, ctrl_code + 10);
+		else
+			p += format_arrow_key(p, term, xkey, shift_state);
 		return p - output;
 	    }
 	}

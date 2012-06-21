@@ -6167,14 +6167,21 @@ int format_arrow_key(char *buf, Terminal *term, int xkey, int ctrl)
 	if (!term->app_keypad_keys)
 	    app_flg = 0;
 #endif
+
+	/* When ctrl > 10 it means it contains the actual control code to send. (once you -10 it)
+	   (I did this so I didn't have to change lots of other code in PuTTY.)  -FireEgl / FuTTY  */
 	/* Useful mapping of Ctrl-arrows */
-	if (ctrl)
+	if (ctrl && ctrl != 10)
 	    app_flg = !app_flg;
 
-	if (app_flg)
-	    p += sprintf((char *) p, "\x1BO%c", xkey);
-	else
+	if (app_flg) {
+		if (ctrl > 10)
+			p += sprintf((char *) p, "\x1B[1;%d%c", ctrl - 10, xkey);
+		else	
+			p += sprintf((char *) p, "\x1BO%c", xkey);
+	} else {
 	    p += sprintf((char *) p, "\x1B[%c", xkey);
+	}
     }
 
     return p - buf;
