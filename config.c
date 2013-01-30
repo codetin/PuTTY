@@ -563,8 +563,7 @@ static void codepage_handler(union control *ctrl, void *dlg,
 	int i;
 	const char *cp, *thiscp;
 	dlg_update_start(ctrl, dlg);
-	thiscp = cp_name(decode_codepage(conf_get_str(conf,
-						      CONF_line_codepage)));
+	thiscp = cp_name(CP_UTF8);
 	dlg_listbox_clear(ctrl, dlg);
 	for (i = 0; (cp = cp_enumerate(i)) != NULL; i++)
 	    dlg_listbox_add(ctrl, dlg, cp);
