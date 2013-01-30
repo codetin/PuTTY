@@ -8,6 +8,8 @@
  * window.c will do `#define PUTTY_DO_GLOBALS' before including this
  * module, and so will get them properly defined.
  */
+#define SECURITY_WIN32
+
 #ifndef GLOBAL
 #ifdef PUTTY_DO_GLOBALS
 #define GLOBAL
