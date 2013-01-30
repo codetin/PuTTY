@@ -448,8 +448,7 @@ void init_ucs(Conf *conf, struct unicode_data *ucsdata)
 	tbuf[i] = i;
 
     /* Decide on the Line and Font codepages */
-    ucsdata->line_codepage = decode_codepage(conf_get_str(conf,
-							  CONF_line_codepage));
+    ucsdata->line_codepage = CP_UTF8;
 
     if (ucsdata->font_codepage <= 0) { 
 	ucsdata->font_codepage=0; 
