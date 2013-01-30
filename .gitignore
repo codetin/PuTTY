@@ -1,6 +1,8 @@
 windows/DEVCPP
 Makefile*
 charset/sbcsdat.c
+*.suo
+*.sdf
 *.obj
 *.exe
 *.rsp
@@ -8,3 +10,5 @@ charset/sbcsdat.c
 *.map
 *.pdb
 /empty.h
+*.suo
+*.sdf
